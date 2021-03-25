@@ -5,11 +5,11 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <script type="text/javascript">
-    var gl;
-    var shaderProgram;
-    var uPMatrix;
-    var vertexPositionBuffer;
-    var vertexColorBuffer;
+    let gl;
+    let shaderProgram;
+    let uPMatrix;
+    let vertexPositionBuffer;
+    let vertexColorBuffer;
     function MatrixMul(inA, inB){
       c = [
         0,0,0,0,
@@ -178,15 +178,15 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
       
 
     let angle = 0.0; //Macierz transformacji świata - określenie położenia kamery 
-    var angleX = 0.0;
-    var angleY = 0.0;
-    var angleZ = 0.0; 
-    var tz = -5.0; //Przesunięcie w osi OZ
-    var tx = 0;
-    var ty = 4;
-    var sx = 1;
-    var sy = 1;
-    var sz = 1;
+    let angleX = 0.0;
+    let angleY = 0.0;
+    let angleZ = 0.0; 
+    let tz = -5.0; //Przesunięcie w osi OZ
+    let tx = 0;
+    let ty = 4;
+    let sx = 1;
+    let sy = 1;
+    let sz = 1;
     function Tick(){
       let uMVMatrix = [
         1,0,0,0,
