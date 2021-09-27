@@ -5,11 +5,11 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <script type="text/javascript">
-    let gl;
-    let shaderProgram;
-    let uPMatrix;
-    let vertexPositionBuffer;
-    let vertexColorBuffer;
+    var gl;
+    var shaderProgram;
+    var uPMatrix;
+    var vertexPositionBuffer;
+    var vertexColorBuffer;
     function MatrixMul(inA, inB){
       c = [
         0,0,0,0,
@@ -79,80 +79,132 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
       //Opis sceny 3D, położenie punktów w przestrzeni 3D w formacie X,Y,Z 
       vertexPosition = [
       //Top
-        -5.0, -2.0, +5.0,  -5.0, -2.0, -5.0,  +5.0, -2.0, +5.0,
-        +5.0, -2.0, +5.0,  -5.0, -2.0, -5.0,  +5.0, -2.0, -5.0,
+        -1.5,0.5,0.7, -1, +1, 0.7, -1,1,1, 
+        -1.5,0.5,0.7, -1.5, 0.5, +1.0, -1,1,1,
+
+        -1,1,1, -1,1,0.7, 0,1,1,
+        0,1,+1,   0,1,0.7,  -1,1,0.7,
       //Left
-        -5.0, -5.0, +5.0,  -5.0, -2.0, +5.0,  -5.0, -5.0, -5.0,
-        -5.0, -5.0, -5.0,  -5.0, -2.0, +5.0,  -5.0, -2.0, -5.0,
+        -1.5, 0.5, 1, -1.5, 0.5, 0.7, -1.5, -1, 1,
+        -1.5, -1, 1, -1.5, -1, 0.7, -1.5, 0.5, 0.7, 
       //Right
-        +5.0, -2.0, +5.0,  +5.0, -5.0, +5.0,  +5.0, -5.0, -5.0,
-        +5.0, -2.0, +5.0,  +5.0, -5.0, -5.0,  +5.0, -2.0, -5.0,
+        0, -1, 1,     0, -1, 0.7,  0, -1.5, 0.7,
+        0, -1.5, 0.7, 0, -1, 1,    0, -1.5, 1,
+
+        0, 0.5, 1,     0, 0.5, 0.7,  0, 1, 0.7,
+        0, 1, 0.7, 0, 0.5, 1,    0, 1, 1,
       //Front
-        +5.0, -5.0, +5.0,  +5.0, -2.0, +5.0,  -5.0, -5.0, +5.0,
-        -5.0, -2.0, +5.0,  -5.0, -5.0, +5.0,  +5.0, -2.0, +5.0,
+        -1.5, 0.5, +1.0,     -1, 0.5, +1.0,     -1, +1, +1.0,
+
+        -1.5, 0.5, +1.0,     -1, 0.5, +1.0,     -1, -1, +1.0,
+        -1.5, 0.5, +1.0,     -1.5, -1, +1,      -1, -1, +1.0,
+
+        -1.5, -1, +1,        -1, -1, +1,        -1, -1.5, +1,
+
+        -1, -1, +1,          -1, -1.5, +1,      0, -1, +1,
+        -1, -1.5, +1,        0, -1, +1,         0, -1.5, +1,       
+
+        -1, 0.5, +1,       -1, +1, +1,         0, 1, +1,
+        -1, 0.5, +1,        0, 1, +1,          0, 0.5, +1,
+
       //Back
-        +5.0, -2.0, -5.0,  +5.0, -5.0, -5.0,  -5.0, -5.0, -5.0,
-        +5.0, -2.0, -5.0,  -5.0, -5.0, -5.0,  -5.0, -2.0, -5.0,
+      -1.5, 0.5, 0.7,     -1, 0.5, 0.7,     -1, +1, 0.7,
+
+      -1.5, 0.5, 0.7,     -1, 0.5, 0.7,     -1, -1, 0.7,
+      -1.5, 0.5, 0.7,     -1.5, -1, 0.7,      -1, -1, 0.7,
+
+      -1.5, -1, 0.7,        -1, -1, 0.7,        -1, -1.5, 0.7,
+
+      -1, -1, 0.7,          -1, -1.5, 0.7,      0, -1, 0.7,
+      -1, -1.5, 0.7,        0, -1, 0.7,         0, -1.5, 0.7,       
+
+      -1, 0.5, 0.7,       -1, +1, 0.7,         0, 1, 0.7,
+      -1, 0.5, 0.7,        0, 1, 0.7,          0, 0.5, 0.7,
+
       //Bottom
-        -5.0, -5.0, +5.0,  -5.0, -5.0, -5.0,  +5.0, -5.0, +5.0,
-        +5.0, -5.0, +5.0,  -5.0, -5.0, -5.0,  +5.0, -5.0, -5.0,
-      //walls
-        +1.0, -5.0, 5.0,  +1.0, -5.0, 3.0,  +1.0, -2.0, 3.0,
-        +1.0, -2.0, 3.0,  +1.0, -2.0, 5.0,  +1.0, -5.0, 5.0,
+        -1.5, -1, 1,  -1.5, -1, 0.7,   -1, -1.5, 1,
+        -1, -1.5, 1,  -1, -1.5, 0.7,   -1.5, -1, 0.7,
 
-        -4.0, -5.0, 3.0,  -4.0, -2.0, 3.0,  +5.0, -2.0, 3.0,
-        +5.0, -2.0, 3.0,  +5.0, -5.0, 3.0,  -4.0, -5.0, 3.0,
+        -1, -1.5, 1,  -1, -1.5, 0.7,   0, -1.5, 0.7,
+        0, -1.5, 0.7, 0, -1.5, 1,      -1, -1.5, 1,
 
-        +4.0, -5.0, 0.0,  +4.0, -2.0, 0.0,  -5.0, -2.0, 0.0,
-        -5.0, -2.0, 0.0,  -5.0, -5.0, 0.0,  +4.0, -5.0, 0.0,
+        //inner C
+        -1, 0.5, 1,   -1, 0.5, 0.7,   0 , 0.5, 0.7,
+        0, 0.5, 0.7,  -1, 0.5, 1,     0, 0.5, 1,
 
-        +1.0, -5.0, -5.0,  +1.0, -5.0, -2.0,  +1.0, -2.0, -5.0,
-        +1.0, -2.0, -2.0,  +1.0, -2.0, -5.0,  +1.0, -5.0, -2.0,
+        -1, -1, 1,   -1, -1, 0.7,   0 , -1, 0.7,
+        0, -1, 0.7,  -1, -1, 1,     0, -1, 1,
 
-        1.0, -5.0, -2.0,  +1.0, -2.0, -2.0,  5.0, -2.0, -2.0,
-        5.0, -2.0, -2.0,  5.0, -5.0, -2.0,  1.0, -5.0, -2.0,
+        -1, 0.5, 1, -1, 0.5, 0.7,   -1, -1, 1,
+        -1, -1, 1,      -1, -1, 0.7,    -1, 0.5, 0.7,
       ];
       
       vertexPositionBuffer = gl.createBuffer(); //Stworzenie tablicy w pamieci karty graficznej
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
       vertexPositionBuffer.itemSize = 3; //zdefiniowanie liczby współrzednych per wierzchołek
-      vertexPositionBuffer.numItems = 22; //Zdefinoiowanie liczby punktów w naszym buforze
+      vertexPositionBuffer.numItems = 36; //Zdefinoiowanie liczby punktów w naszym buforze
       
       let vertexColor = [
-      //top
-        0.0, 0.0, 0.0,  0.0, 0.0, 0.0,   0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0,  0.0, 0.0, 0.0,   0.0, 0.0, 0.0,
+      //Top
+        -1.5,0.5,0.7, -1, +1, 0.7, -1,1,1, 
+        -1.5,0.5,0.7, -1.5, 0.5, +1.0, -1,1,1,
+
+        -1, 0.5, 1, -1, 0.5, 0.7, 0, 1, +1,
+        0, 1, +1, 0, 1, 0.7,  -1, 0.5, 0.7,
       //Left
-        1.0, 1.0, 0.0,  1, 1.0, 0.0,  1.0, 1.0, 0.0,
-        1.0, 1.0, 0.0,  1, 1.0, 0.0,  1.0, 1.0, 0.0,
+        -1.5, 0.5, 1, -1.5, 0.5, 0.7, -1, -1, 1,
+        -1.5, -1, 1, -1.5, -1, 0.7, -1.5, 0.5, 0.7, 
       //Right
-        1.0, 1.0, 0.0,  1, 1.0, 0.0,  1.0, 1.0, 0.0,
-        1.0, 1.0, 0.0,  1, 1.0, 0.0,  1.0, 1.0, 0.0,
+        0, -1, 1,     0, -1, 0.7,  0, -1.5, 0.7,
+        0, -1.5, 0.7, 0, -1, 1,    0, -1.5, 1,
+
+        0, 0.5, 1,     0, 0.5, 0.7,  0, 1, 0.7,
+        0, 1, 0.7, 0, 0.5, 1,    0, 1, 1,
       //Front
-        1.0, 0.0, 0.0,  1, 0.0, 0.0,  1.0, 0.0, 0.0,
-        1.0, 0.0, 0.0,  1, 0.0, 0.0,  1.0, 0.0, 0.0,
+        -1.5, 0.5, +1.0,     -1, 0.5, +1.0,     -1, +1, +1.0,
+
+        -1.5, 0.5, +1.0,     -1, 0.5, +1.0,     -1, -1, +1.0,
+        -1.5, 0.5, +1.0,     -1.5, -1, +1,      -1, -1, +1.0,
+
+        -1.5, -1, +1,        -1, -1, +1,        -1, -1.5, +1,
+
+        -1, -1, +1,          -1, -1.5, +1,      0, -1, +1,
+        -1, -1.5, +1,        0, -1, +1,         0, -1.5, +1,       
+
+        -1, 0.5, +1,       -1, +1, +1,         0, 1, +1,
+        -1, 0.5, +1,        0, 1, +1,          0, 0.5, +1,
+
       //Back
-        0.0, 1.0, 0.0,  0, 1.0, 0.0,  0.0, 1.0, 0.0,
-        0.0, 1.0, 0.0,  0, 1.0, 0.0,  0.0, 1.0, 0.0,
+      -1.5, 0.5, 0.7,     -1, 0.5, 0.7,     -1, +1, 0.7,
+
+      -1.5, 0.5, 0.7,     -1, 0.5, 0.7,     -1, -1, 0.7,
+      -1.5, 0.5, 0.7,     -1.5, -1, 0.7,      -1, -1, 0.7,
+
+      -1.5, -1, 0.7,        -1, -1, 0.7,        -1, -1.5, 0.7,
+
+      -1, -1, 0.7,          -1, -1.5, 0.7,      0, -1, 0.7,
+      -1, -1.5, 0.7,        0, -1, 0.7,         0, -1.5, 0.7,       
+
+      -1, 0.5, 0.7,       -1, +1, 0.7,         0, 1, 0.7,
+      -1, 0.5, 0.7,        0, 1, 0.7,          0, 0.5, 0.7,
+
       //Bottom
-        0.0, 0.0, 0.0,  0.0, 0.0, 0.0,   0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0,  0.0, 0.0, 0.0,   0.0, 0.0, 0.0,
-      //walls
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
+        -1.5, -1, 1,  -1.5, -1, 0.7,   -1, -1.5, 1,
+        -1, -1.5, 1,  -1, -1.5, 0.7,   -1.5, -1, 0.7,
 
-        0.0, 1.0, 1.0,  0.0, 1.0, 1.0,   0.0, 1.0, 1.0,
-        0.0, 1.0, 1.0,  0.0, 1.0, 1.0,   0.0, 1.0, 1.0,
+        -1, -1.5, 1,  -1, -1.5, 0.7,   0, -1.5, 0.7,
+        0, -1.5, 0.7, 0, -1.5, 1,      -1, -1.5, 1,
 
-        1.0, 0.0, 1.0,  1.0, 0.0, 1.0,   1.0, 0.0, 1.0,
-        1.0, 0.0, 1.0,  1.0, 0.0, 1.0,   1.0, 0.0, 1.0,
+        //inner C
+        -1, 0.5, 1,   -1, 0.5, 0.7,   0 , 0.5, 0.7,
+        0, 0.5, 0.7,  -1, 0.5, 1,     0, 0.5, 1,
 
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
+        -1, -1, 1,   -1, -1, 0.7,   0 , -1, 0.7,
+        0, -1, 0.7,  -1, -1, 1,     0, -1, 1,
 
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,   0.0, 0.0, 1.0,
+        -1, 0.5, 1, -1, 0.5, 0.7,   -1, -1, 1,
+        -1, -1, 1,      -1, -1, 0.7,    -1, 0.5, 0.7,
       ];
 
 
@@ -160,11 +212,11 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW);
       vertexColorBuffer.itemSize = 3;
-      vertexColorBuffer.numItems = 22;
+      vertexColorBuffer.numItems = 36;
 
       //Macierze opisujące położenie wirtualnej kamery w przestrzenie 3D
       let aspect = gl.viewportWidth/gl.viewportHeight;
-      let fov =45.0 * Math.PI / 180.0; //Określenie pola widzenia kamery
+      let fov = 45.0 * Math.PI / 180.0; //Określenie pola widzenia kamery
       let zFar = 100.0; //Ustalenie zakresów renderowania sceny 3D (od obiektu najbliższego zNear do najdalszego zFar)
       let zNear = 0.1;
       uPMatrix = [
@@ -177,16 +229,11 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
     }
       
 
-    let angle = 0.0; //Macierz transformacji świata - określenie położenia kamery 
-    let angleX = 0.0;
-    let angleY = 0.0;
-    let angleZ = 0.0; 
-    let tz = -5.0; //Przesunięcie w osi OZ
-    let tx = 0;
-    let ty = 4;
-    let sx = 1;
-    let sy = 1;
-    let sz = 1;
+    let angle = 45.0; //Macierz transformacji świata - określenie położenia kamery 
+    var angleX = 0.0;
+    var angleY = 0.0;
+    var angleZ = 0.0; 
+    var tz = -5.0; //Przesunięcie w osi OZ
     function Tick(){
       let uMVMatrix = [
         1,0,0,0,
@@ -222,49 +269,10 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
       0,0,tz,1
       ];
 
-      let uMVTranslateX = [
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        tx,0,0,1
-      ]
-
-      let uMVTranslateY = [
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,ty,0,1
-      ]
-
-      let uMVScaleX = [
-        sx,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1
-      ]
-
-      let uMVScaleY = [
-        1,0,0,0,
-        0,sy,0,0,
-        0,0,1,0,
-        0,0,0,1
-      ]
-
-      let uMVScaleZ = [
-        1,0,0,0,
-        0,1,0,0,
-        0,0,sz,0,
-        0,0,0,1
-      ]
       uMVMatrix = MatrixMul(uMVMatrix,uMVRotX);
       uMVMatrix = MatrixMul(uMVMatrix,uMVRotY);
       uMVMatrix = MatrixMul(uMVMatrix,uMVRotZ);
       uMVMatrix = MatrixMul(uMVMatrix,uMVTranslateZ);
-      uMVMatrix = MatrixMul(uMVMatrix,uMVTranslateX);
-      uMVMatrix = MatrixMul(uMVMatrix,uMVTranslateY);
-      uMVMatrix = MatrixMul(uMVMatrix,uMVScaleX);
-      uMVMatrix = MatrixMul(uMVMatrix,uMVScaleY);
-      uMVMatrix = MatrixMul(uMVMatrix,uMVScaleZ);
       //Render Scene
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight); 
       gl.clearColor(1.0,0.2,0.2,1.0); //Wyczyszczenie obrazu kolorem czerwonym
@@ -290,43 +298,24 @@ Trójkąt, który posiada różne kolory na różnych wierzchołkach otrzyma gra
       setTimeout(Tick,0.1)
     }
     function handleKeyDown(e){
-      if(e.keyCode == 87){//w
+      if(e.keyCode == 87){
         angleX = angleX + 1.0;
       }
-      if(e.keyCode == 83){//s
+      if(e.keyCode == 83){
         angleX = angleX - 1.0;
       }
-      if(e.keyCode == 68){//d
+      if(e.keyCode == 68){
         angleY = angleY + 1.0;
       }
-      if(e.keyCode == 65){//a
+      if(e.keyCode == 65){
         angleY = angleY - 1.0;
       }
-      if(e.keyCode == 81){//q
+      if(e.keyCode == 81){
         angleZ = angleZ + 1.0;
       }
-      if(e.keyCode == 69){//e
+      if(e.keyCode == 69){
         angleZ = angleZ - 1.0;
       }
-      if(e.keyCode == 75){//k
-        tz = tz- 0.1;
-      }
-      if(e.keyCode == 73){//i
-        tz = tz + 0.05;
-      }
-      if(e.keyCode == 74){//j
-        tx = tx + 0.05;
-      }
-      if(e.keyCode == 76){//l
-        tx = tx - 0.05;
-      }
-      if(e.keyCode == 85){//u
-        ty = ty - 0.05;
-      }
-      if(e.keyCode == 79){//o
-        ty = ty + 0.05;
-      }
-
     }
     </script>
   </head>
