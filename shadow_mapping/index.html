@@ -11,6 +11,88 @@
     var vertexNormalBuffer;
     var indexBuffer;
     
+    function lookAt(out, eye, center, up) {
+        let x0, x1, x2, y0, y1, y2, z0, z1, z2, len;
+        let eyex = eye[0];
+        let eyey = eye[1];
+        let eyez = eye[2];
+        let upx = up[0];
+        let upy = up[1];
+        let upz = up[2];
+        let centerx = center[0];
+        let centery = center[1];
+        let centerz = center[2];
+
+        z0 = eyex - centerx;
+        z1 = eyey - centery;
+        z2 = eyez - centerz;
+        len = 1 / Math.hypot(z0, z1, z2);
+        z0 *= len;
+        z1 *= len;
+        z2 *= len;
+        x0 = upy * z2 - upz * z1;
+        x1 = upz * z0 - upx * z2;
+        x2 = upx * z1 - upy * z0;
+        len = Math.hypot(x0, x1, x2);
+        if (!len) {
+            x0 = 0;
+            x1 = 0;
+            x2 = 0;
+        } else {
+            len = 1 / len;
+            x0 *= len;
+            x1 *= len;
+            x2 *= len;
+        }
+        y0 = z1 * x2 - z2 * x1;
+        y1 = z2 * x0 - z0 * x2;
+        y2 = z0 * x1 - z1 * x0;
+        len = Math.hypot(y0, y1, y2);
+        if (!len) {
+            y0 = 0;
+            y1 = 0;
+            y2 = 0;
+        } else {
+            len = 1 / len;
+            y0 *= len;
+            y1 *= len;
+            y2 *= len;
+        }
+        out = [x0, y0, z0, 0,
+               x1, y1, z1, 0,
+               x2, y2, z2, 0,
+               -(x0 * eyex + x1 * eyey + x2 * eyez), -(y0 * eyex + y1 * eyey + y2 * eyez), -(z0 * eyex + z1 * eyey + z2 * eyez), 1];
+        return out;
+    }
+
+    function normalize(out, a) {
+        let x = a[0];
+        let y = a[1];
+        let z = a[2];
+        let len = x * x + y * y + z * z;
+        out[0] = a[0] * len;
+        out[1] = a[1] * len;
+        out[2] = a[2] * len;
+        return out;
+    }
+
+    var Camera = function(pos, lookAt, up){
+        this.forward = [lookAt[0] - pos[0], lookAt[1] - pos[1], lookAt[2] - pos[2]];
+        this.right = [this.forward[1] * up[2] - this.forward[2] * up[1], this.forward[2] * up[0] - this.forward[0] * up[2], this.forward[0] * up[1] - this.forward[1] * up[0]];
+        this.up = [this.right[1] * this.forward[2] - this.right[2] * this.forward[1], this.right[2] * this.forward[0] - this.right[0] * this.forward[2], this.right[0] * this.forward[1] - this.right[1] * this.forward[0]];
+        
+        this.position = pos;
+
+        normalize(this.forward, this.forward);
+        normalize(this.right, this.right);
+        normalize(this.up, this.up);
+
+    }
+    Camera.prototype.GetViewMatrix = function (out) {
+        var lookAtVar = [this.position[0] + this.forward[0], this.position[1] + this.forward[1], this.position[2] + this.forward[2]]
+        return lookAt(out, this.position, lookAtVar, this.up);
+    };
+
     function MatrixMul(a,b) //Mnożenie macierzy
     {
       let c = [
@@ -358,7 +440,7 @@
       gl_Position = mProjection * mView * vec4(fPosition, 1.0);
     }
   `;
-  const vertextShaderSourceShadowMap = ` //Znak akcentu z przycisku tyldy - na lewo od przycisku 1 na klawiaturze
+  const ShadowVertextShaderSource = ` //Znak akcentu z przycisku tyldy - na lewo od przycisku 1 na klawiaturze
     precision mediump float;
     
     uniform mat4 mProjection;
@@ -410,12 +492,13 @@
     void main(void) {
        vec3 lightNormal = normalize(pointLightPosition - fPosition);
 
-       float ligthToFrag = (fPosition - pointLightPosition)/(shadowClip.y - shadowClip.x)
-       float lightIntensity = 0.6 + 0.4 * max(dot(fNormal, lightNormal), 0.0);
-       float shadowMapValue = textureCube(lightShadowMap, lightNormal).b;
+       float ligthToFrag = (length(fPosition - pointLightPosition) - shadowClip.x)/(shadowClip.y - shadowClip.x);
+
+       float shadowMapValue = textureCube(lightShadowMap, -lightNormal).r;
        float lightIntensity = 0.6;
-       if(shadowMapValue > lightToFrag){
-           lightnIntensity += 0.4 * max(dot(fNormal, lightNormal), 0.0);
+       if(shadowMapValue + 0.2>= ligthToFrag){
+            lightIntensity += 0.4 * max(dot(fNormal, 
+            lightNormal), 0.0);
        }
        gl_FragColor = vec4(meshColor.rgb * lightIntensity, meshColor.a);
     }
@@ -435,34 +518,134 @@
        gl_FragColor = vec4(lightFragDistance, lightFragDistance, lightFragDistance, 1.0);
     }
   `;
+
+  const vertexShaderSourceShadowMapGen = `
+    precision mediump float;
+
+    uniform mat4 mProjection;
+    uniform mat4 mView;
+    uniform mat4 mWorld;
+
+    attribute vec3 vPosition;
+
+    varying vec3 fPosition;
+
+    void main(void) {
+       fPosition = (mWorld * vec4(vPosition, 1.0)).xyz;
+
+       gl_Position = mProjection * mView * vec4(fPosition, 1.0);
+    }
+  `;
       let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER); //Stworzenie obiektu shadera 
       let vertexShader   = gl.createShader(gl.VERTEX_SHADER);
+
+      let fragmentShaderShadowMapGen = gl.createShader(gl.FRAGMENT_SHADER);
+      let vertexShaderShadowMapGen = gl.createShader(gl.VERTEX_SHADER);
+
+      let shadowFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      let shadowVertexShader = gl.createShader(gl.VERTEX_SHADER);
+      
       gl.shaderSource(fragmentShader, fragmentShaderSource); //Podpięcie źródła kodu shader
       gl.shaderSource(vertexShader, vertextShaderSource);
+
+      gl.shaderSource(fragmentShaderShadowMapGen, fragmentShaderSourceShadowMapGen);
+      gl.shaderSource(vertexShaderShadowMapGen, vertexShaderSourceShadowMapGen);
+
+      gl.shaderSource(shadowFragmentShader, shadowfragmentShaderSource);
+      gl.shaderSource(shadowVertexShader, ShadowVertextShaderSource);
+
+
       gl.compileShader(fragmentShader); //Kompilacja kodu shader
       gl.compileShader(vertexShader);
+      
+      gl.compileShader(fragmentShaderShadowMapGen);
+      gl.compileShader(vertexShaderShadowMapGen);
+
+      gl.compileShader(shadowFragmentShader);
+      gl.compileShader(shadowVertexShader);
+
+
+
       if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) { //Sprawdzenie ewentualnych błedów kompilacji
         alert(gl.getShaderInfoLog(fragmentShader));
         return null;
       }
       if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        alert(gl.getShaderInfoLog(vertexShader));
+        alert("vertexShader " + gl.getShaderInfoLog(vertexShader));
         return null;
       }
       
+      if (!gl.getShaderParameter(fragmentShaderShadowMapGen, gl.COMPILE_STATUS)) {
+        alert("ShadowMapGenFragmentShader " + gl.getShaderInfoLog(fragmentShaderShadowMapGen));
+        return null;
+      }
+
+      if (!gl.getShaderParameter(vertexShaderShadowMapGen, gl.COMPILE_STATUS)) {
+        alert("ShadowMapGenFragmentShader " + gl.getShaderInfoLog(vertexShaderShadowMapGen));
+        return null;
+      }
+
+      if (!gl.getShaderParameter(shadowFragmentShader, gl.COMPILE_STATUS)) {
+        alert("shadowFragmentShader " + gl.getShaderInfoLog(shadowFragmentShader));
+        return null;
+      }
+
+      if (!gl.getShaderParameter(shadowVertexShader, gl.COMPILE_STATUS)) { 
+        alert("ShadowVertexShader " + gl.getShaderInfoLog(shadowVertexShader));
+        return null;
+      }
+
       shaderProgram = gl.createProgram(); //Stworzenie obiektu programu 
+      shadowMapGenShaderProgram = gl.createProgram(); 
+      shadowShaderProgram = gl.createProgram(); 
+
       gl.attachShader(shaderProgram, vertexShader); //Podpięcie obu shaderów do naszego programu wykonywanego na karcie graficznej
       gl.attachShader(shaderProgram, fragmentShader);
       gl.linkProgram(shaderProgram);
-      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) alert("Could not initialise shaders");  //Sprawdzenie ewentualnych błedów
+      if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) alert("Could not initialise shaders noShadow");  //Sprawdzenie ewentualnych błedów
       
+      gl.attachShader(shadowMapGenShaderProgram, fragmentShaderShadowMapGen);
+      gl.attachShader(shadowMapGenShaderProgram, vertexShaderShadowMapGen);
+      gl.linkProgram(shadowMapGenShaderProgram);
+      if (!gl.getProgramParameter(shadowMapGenShaderProgram, gl.LINK_STATUS)) alert("Could not initialise shaders shadowMap");  //Sprawdzenie ewentualnych błedów
+
+
+      gl.attachShader(shadowShaderProgram, shadowVertexShader);
+      gl.attachShader(shadowShaderProgram, shadowFragmentShader);
+      gl.linkProgram(shadowShaderProgram);
+      if (!gl.getProgramParameter(shadowShaderProgram, gl.LINK_STATUS)) alert("Could not initialise shaders shadow");  //Sprawdzenie ewentualnych błedów
+
+
       //Opis sceny 3D, położenie punktów w przestrzeni 3D w formacie X,Y,Z 
       let vertexPosition; //3 punkty po 3 składowe - X1,Y1,Z1, X2,Y2,Z2, X3,Y3,Z3 - 1 trójkąt
       let vertexNormal;
       let indexes;
       
-      [indexes, vertexPosition, vertexNormal] = await LoadObj('basic_map.obj');
+      [indexes, vertexPosition, vertexNormal] = await LoadObj('village.obj');
       
+      //create buffer and textures
+      shadowMapCube = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, shadowMapCube);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+	  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+      for(let i = 0; i < 6; i++){
+          gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      }
+
+      shadowMapFramebuffer = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, shadowMapFramebuffer);
+
+      shadowMapRenderBuffer = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, shadowMapRenderBuffer);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 512, 512);
+
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
       vertexPositionBuffer = gl.createBuffer(); //Stworzenie tablicy w pamieci karty graficznej
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
@@ -485,12 +668,31 @@
       let fov = 45.0 * Math.PI / 180.0; //Określenie pola widzenia kamery
       let zFar = 100.0; //Ustalenie zakresów renderowania sceny 3D (od obiektu najbliższego zNear do najdalszego zFar)
       let zNear = 0.1;
+
       uPMatrix = [
        1.0/(aspect*Math.tan(fov/2)),0                           ,0                         ,0                            ,
        0                         ,1.0/(Math.tan(fov/2))         ,0                         ,0                            ,
        0                         ,0                           ,-(zFar+zNear)/(zFar-zNear)  , -1,
        0                         ,0                           ,-(2*zFar*zNear)/(zFar-zNear) ,0.0,
       ];
+
+
+      
+      
+      //set shadow matrixes
+     
+
+      var LightPositionX = 0;
+      var LightPositionY = 0;
+      var LightPositionZ = 3;
+      shadowClip = [zNear, zFar];
+      shadowMapProjection = [
+       1.0/(aspect*Math.tan(fov/2)),0                           ,0                         ,0                            ,
+       0                         ,1.0/(Math.tan(fov/2))         ,0                         ,0                            ,
+       0                         ,0                           ,-(zFar+zNear)/(zFar-zNear)  , -1,
+       0                         ,0                           ,-(2*zFar*zNear)/(zFar-zNear) ,0.0
+      ];
+
       Tick();
     } 
     //let angle = 45.0; //Macierz transformacji świata - określenie położenia kamery 
@@ -500,7 +702,7 @@
     var angleX = 0.0;
     var KameraPositionZ = -8.0;
     
-    var Object1PositionX = 0.0;
+    var Object1PositionX = 0.1;
     var Object1PositionY = 0.0;
     var Object1PositionZ = 0.0;
     
@@ -519,9 +721,9 @@
     var Object3AngleZ = 0.0;
     
     var LightSize = 0.1;
-    var Object1Sizedx = 0.5;
-    var Object1Sizedy = 0.5;
-    var Object1Sizedz = 0.5;
+    var Object1Sizedx = 1.0;
+    var Object1Sizedy = 1.0;
+    var Object1Sizedz = 1.0;
     var Object2Sizedx = 0.2;
     var Object2Sizedy = 0.2;
     var Object2Sizedz = 0.2;
@@ -532,6 +734,7 @@
     var LightPositionX = 0;
     var LightPositionY = 0;
     var LightPositionZ = 3;
+
     
     
     function Tick()
@@ -543,7 +746,24 @@
       
       let uVMatrix = CreateIdentytyMatrix();
       
-      
+      var cameras = [
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX + 1, LightPositionY, LightPositionZ], [0, -1, 0]),
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX - 1, LightPositionY, LightPositionZ], [0, -1, 0]),
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX, LightPositionY + 1, LightPositionZ], [0, 0, 1]),
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX, LightPositionY - 1, LightPositionZ], [0, 0, -1]),
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX, LightPositionY, LightPositionZ + 1], [0, -1, 0]),
+        new Camera([LightPositionX, LightPositionY, LightPositionZ], [LightPositionX, LightPositionY, LightPositionZ - 1], [0, -1, 0]),
+    ];
+
+    shadowMapViewMatrixes = [
+        CreateIdentytyMatrix(),
+        CreateIdentytyMatrix(),
+        CreateIdentytyMatrix(),
+        CreateIdentytyMatrix(),
+        CreateIdentytyMatrix(),
+        CreateIdentytyMatrix()
+    ];
+
       uVMatrix = MatrixMul(uVMatrix,CreateRotationXMatrix(angleX));
       uVMatrix = MatrixMul(uVMatrix,CreateRotationYMatrix(angleY));
       uVMatrix = MatrixMul(uVMatrix,CreateRotationZMatrix(angleZ));
@@ -581,43 +801,91 @@
       
       //alert(uPMatrix);
       
+
+      //generate shadow map
+      gl.useProgram(shadowMapGenShaderProgram);
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, shadowMapCube);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, shadowMapFramebuffer);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, shadowMapRenderBuffer);
+
+
+      gl.viewport(0, 0, 512, 512);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+
+
+      //gl.uniform2fv(gl.getUniformLocation(shadowMapGenShaderProgram, "shadowClip"), shadowClip);
+      gl.uniform3fv(gl.getUniformLocation(shadowMapGenShaderProgram, "pointLightPosition"), [LightPositionX, LightPositionY, LightPositionZ]);
+      gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, "mProjection"),false,  shadowMapProjection);
+
+
+
+      for(let i = 0; i < 6; i++){
+        gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, 'mView'), gl.FALSE, cameras[i].GetViewMatrix(shadowMapViewMatrixes[i]));
+
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, shadowMapCube, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, shadowMapRenderBuffer);
+
+        gl.enableVertexAttribArray(gl.getAttribLocation(shadowMapGenShaderProgram, "vPosition"));  //Przekazywanie wektorów normalnych
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
+        gl.vertexAttribPointer(gl.getAttribLocation(shadowMapGenShaderProgram, "vPosition"), 3, gl.FLOAT, false, 0, 0);
+
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, "mWorld"), false, new Float32Array(uMMatrix1));
+        //gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
+
+        gl.drawElements(gl.TRIANGLES, indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        
+      }
+      
+
+      gl.clearColor(0,0,0,1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       //Render Scene
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight); 
       gl.clearColor(1.0,0.0,0.0,1.0); //Wyczyszczenie obrazu kolorem czerwonym
       gl.clearDepth(1.0);             //Wyczyścienie bufora głebi najdalszym planem
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.useProgram(shaderProgram)   //Użycie przygotowanego programu shaderowego
-      
+
+      gl.useProgram(shadowShaderProgram)   //Użycie przygotowanego programu shaderowego
       gl.enable(gl.DEPTH_TEST);           // Włączenie testu głębi - obiekty bliższe mają przykrywać obiekty dalsze
-      gl.depthFunc(gl.LEQUAL);            // 
+      gl.depthFunc(gl.LEQUAL);            
       
-      gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "mProjection"), false, new Float32Array(uPMatrix)); //Wgranie macierzy kamery do pamięci karty graficznej
-      gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "mView"), false, new Float32Array(uVMatrix));
-      gl.uniform3f(gl.getUniformLocation(shaderProgram, "pointLightPosition"),LightPositionX,LightPositionY,LightPositionZ);
-      
-      gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, "vPosition"));  //Przekazanie położenia
+      gl.uniformMatrix4fv(gl.getUniformLocation(shadowShaderProgram, "mProjection"), false, new Float32Array(uPMatrix)); //Wgranie macierzy kamery do pamięci karty graficznej
+      gl.uniformMatrix4fv(gl.getUniformLocation(shadowShaderProgram, "mView"), false, new Float32Array(uVMatrix));
+      gl.uniform3f(gl.getUniformLocation(shadowShaderProgram, "pointLightPosition"),LightPositionX,LightPositionY,LightPositionZ);
+      gl.uniform2fv(gl.getUniformLocation(shadowShaderProgram, "shadowClip"), shadowClip);
+      gl.uniform1i(gl.getUniformLocation(shadowShaderProgram, "lightShadowMap"), 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, shadowMapCube);
+
+      gl.enableVertexAttribArray(gl.getAttribLocation(shadowShaderProgram, "vPosition"));  //Przekazanie położenia
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
-      gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, "vPosition"), vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(gl.getAttribLocation(shadowShaderProgram, "vPosition"), vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
       
-      gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, "vNormal"));  //Przekazywanie wektorów normalnych
+      gl.enableVertexAttribArray(gl.getAttribLocation(shadowShaderProgram, "vNormal"));  //Przekazywanie wektorów normalnych
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
-      gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, "vNormal"), vertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(gl.getAttribLocation(shadowShaderProgram, "vNormal"), vertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
     
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
       
       //pierwszy element
-      gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "mWorld"), false, new Float32Array(uMMatrix1));
-      gl.uniform4f(gl.getUniformLocation(shaderProgram, "meshColor"),0.0,0.0,1.0,1.0);  
+      gl.uniformMatrix4fv(gl.getUniformLocation(shadowShaderProgram, "mWorld"), false, new Float32Array(uMMatrix1));
+      gl.uniform4f(gl.getUniformLocation(shadowShaderProgram, "meshColor"),0.0,0.0,1.0,1.0);  
       //gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
       gl.drawElements(gl.TRIANGLES, indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
       
       //Obiekt Światła
-      gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "mWorld"), false, new Float32Array(uMMatrix0));
-      gl.uniform4f(gl.getUniformLocation(shaderProgram, "meshColor"),0.0,1.0,0.0,1.0);
+      gl.uniformMatrix4fv(gl.getUniformLocation(shadowShaderProgram, "mWorld"), false, new Float32Array(uMMatrix0));
+      gl.uniform4f(gl.getUniformLocation(shadowShaderProgram, "meshColor"),0.0,1.0,0.0,1.0);
       //gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
       gl.drawElements(gl.TRIANGLES, indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
       
-      setTimeout(Tick,100);
+      setTimeout(Tick,1);
     }
     function handlekeydown(e)
     {
