@@ -496,7 +496,7 @@
 
        float shadowMapValue = textureCube(lightShadowMap, -lightNormal).r;
        float lightIntensity = 0.6;
-       if(shadowMapValue + 0.2>= ligthToFrag){
+       if(shadowMapValue + 0.05>= ligthToFrag){
             lightIntensity += 0.4 * max(dot(fNormal, 
             lightNormal), 0.0);
        }
@@ -621,7 +621,7 @@
       let vertexNormal;
       let indexes;
       
-      [indexes, vertexPosition, vertexNormal] = await LoadObj('village.obj');
+      [indexes, vertexPosition, vertexNormal] = await LoadObj('Room.obj');
       
       //create buffer and textures
       shadowMapCube = gl.createTexture();
@@ -666,8 +666,8 @@
       //Macierze opisujące położenie wirtualnej kamery w przestrzenie 3D
       let aspect = gl.viewportWidth/gl.viewportHeight;
       let fov = 45.0 * Math.PI / 180.0; //Określenie pola widzenia kamery
-      let zFar = 100.0; //Ustalenie zakresów renderowania sceny 3D (od obiektu najbliższego zNear do najdalszego zFar)
-      let zNear = 0.1;
+      let zFar = 15.0; //Ustalenie zakresów renderowania sceny 3D (od obiektu najbliższego zNear do najdalszego zFar)
+      let zNear = 0.05;
 
       uPMatrix = [
        1.0/(aspect*Math.tan(fov/2)),0                           ,0                         ,0                            ,
@@ -721,9 +721,9 @@
     var Object3AngleZ = 0.0;
     
     var LightSize = 0.1;
-    var Object1Sizedx = 1.0;
-    var Object1Sizedy = 1.0;
-    var Object1Sizedz = 1.0;
+    var Object1Sizedx = 0.5;
+    var Object1Sizedy = 0.5;
+    var Object1Sizedz = 0.5;
     var Object2Sizedx = 0.2;
     var Object2Sizedy = 0.2;
     var Object2Sizedz = 0.2;
@@ -731,9 +731,9 @@
     var Object3Sizedy = 0.4;
     var Object3Sizedz = 0.4;
     
-    var LightPositionX = 0;
-    var LightPositionY = 0;
-    var LightPositionZ = 3;
+    var LightPositionX = 0.1;
+    var LightPositionY = 1;
+    var LightPositionZ = 0.5;
 
     
     
@@ -814,26 +814,29 @@
       gl.enable(gl.CULL_FACE);
 
 
-      //gl.uniform2fv(gl.getUniformLocation(shadowMapGenShaderProgram, "shadowClip"), shadowClip);
+      gl.uniform2fv(gl.getUniformLocation(shadowMapGenShaderProgram, "shadowClip"), shadowClip);
       gl.uniform3fv(gl.getUniformLocation(shadowMapGenShaderProgram, "pointLightPosition"), [LightPositionX, LightPositionY, LightPositionZ]);
       gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, "mProjection"),false,  shadowMapProjection);
 
 
 
       for(let i = 0; i < 6; i++){
+          
+
         gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, 'mView'), gl.FALSE, cameras[i].GetViewMatrix(shadowMapViewMatrixes[i]));
 
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, shadowMapCube, 0);
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, shadowMapRenderBuffer);
 
+
         gl.enableVertexAttribArray(gl.getAttribLocation(shadowMapGenShaderProgram, "vPosition"));  //Przekazywanie wektorów normalnych
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
         gl.vertexAttribPointer(gl.getAttribLocation(shadowMapGenShaderProgram, "vPosition"), 3, gl.FLOAT, false, 0, 0);
+
 
 
         gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapGenShaderProgram, "mWorld"), false, new Float32Array(uMMatrix1));
         //gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
-
         gl.drawElements(gl.TRIANGLES, indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         
       }
@@ -845,9 +848,10 @@
       gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
       gl.bindRenderbuffer(gl.RENDERBUFFER, null);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      
       //Render Scene
       gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight); 
-      gl.clearColor(1.0,0.0,0.0,1.0); //Wyczyszczenie obrazu kolorem czerwonym
+      gl.clearColor(0.0,0.0,0.0,1.0); //Wyczyszczenie obrazu kolorem czerwonym
       gl.clearDepth(1.0);             //Wyczyścienie bufora głebi najdalszym planem
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -882,8 +886,8 @@
       //Obiekt Światła
       gl.uniformMatrix4fv(gl.getUniformLocation(shadowShaderProgram, "mWorld"), false, new Float32Array(uMMatrix0));
       gl.uniform4f(gl.getUniformLocation(shadowShaderProgram, "meshColor"),0.0,1.0,0.0,1.0);
-      //gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
-      gl.drawElements(gl.TRIANGLES, indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
+
       
       setTimeout(Tick,1);
     }
@@ -925,6 +929,7 @@
     </head>
     <body onload="startGL()" onkeydown="handlekeydown(event)">
     <canvas id="canvas3D" width="1280" height="720" style="border: solid black 1px"></canvas>
-    
+    <br />
+    Efekt lustrzanego cienia jest spowodowany tym, że obiekt generujący światło jest mniejszą wersją obiektu pokoju przez co rzucany jest dodatkowy cień
     </body>
 </html>
